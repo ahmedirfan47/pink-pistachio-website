@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply bg-cream text-charcoal font-sans;
+  }
+  h1, h2, h3, h4, h5 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  /* Layout */
+  .container-px {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-pink-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-pink-700 hover:shadow-float active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border-2 border-pink-600 bg-transparent px-6 py-3 text-sm font-semibold text-pink-700 transition-all duration-200 hover:bg-pink-50 active:scale-[0.98];
+  }
+  .btn-dark {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-charcoal px-6 py-3 text-sm font-semibold text-cream shadow-sm transition-all duration-200 hover:bg-charcoal-600 active:scale-[0.98];
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-charcoal transition-all duration-200 hover:bg-pink-50;
+  }
+
+  /* Cards */
+  .card {
+    @apply rounded-3xl border border-pink-100 bg-white shadow-card transition-all duration-300 hover:shadow-hover;
+  }
+  .card-flat {
+    @apply rounded-3xl border border-pink-100 bg-white;
+  }
+
+  /* Forms */
+  .input-field {
+    @apply w-full rounded-2xl border border-pink-200 bg-white px-4 py-3 text-sm text-charcoal placeholder:text-charcoal-600/40 transition-all duration-200 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-200;
+  }
+  .label-field {
+    @apply mb-1.5 block text-sm font-semibold text-charcoal;
+  }
+
+  /* Typography */
+  .section-heading {
+    @apply font-display text-3xl font-bold text-charcoal sm:text-4xl;
+  }
+  .section-eyebrow {
+    @apply mb-3 inline-block text-xs font-bold uppercase tracking-[0.25em] text-pink-500;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold;
+  }
+  .badge-pink {
+    @apply badge bg-pink-100 text-pink-700;
+  }
+  .badge-pistachio {
+    @apply badge bg-pistachio-100 text-pistachio-700;
+  }
+  .badge-amber {
+    @apply badge bg-amber-100 text-amber-700;
+  }
+  .badge-red {
+    @apply badge bg-red-100 text-red-700;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply animate-pulse rounded-2xl bg-pink-100;
+  }
+
+  /* Divider */
+  .divider {
+    @apply my-6 border-t border-pink-100;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Custom scrollbar for admin sidebar */
+.admin-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.admin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.admin-scroll::-webkit-scrollbar-thumb {
+  background: #F5C0CC;
+  border-radius: 10px;
+}

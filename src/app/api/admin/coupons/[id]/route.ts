@@ -1,0 +1,49 @@
+import { NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { requireAdminApi } from '@/lib/admin-guard';
+import { couponSchema } from '@/lib/validations';
+
+export async function PUT(req: Request, { params }: { params: { id: string } }) {
+  const session = await requireAdminApi();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  try {
+    const body = await req.json();
+    const data = couponSchema.parse(body);
+
+    const coupon = await db.coupon.update({
+      where: { id: params.id },
+      data: {
+        ...data,
+        code: data.code.toUpperCase(),
+        maxUses: data.maxUses || null,
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+      },
+    });
+
+    return NextResponse.json(coupon);
+  } catch (err: any) {
+    if (err?.issues) return NextResponse.json({ error: err.issues[0]?.message || 'Invalid data' }, { status: 400 });
+    console.error('[admin/coupons PUT] error:', err);
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
+  }
+}
+
+export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const session = await requireAdminApi();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  9:14 PMClaude responded: try {try {
+
+await db.coupon.delete({ where: { id: params.id } });
+
+return NextResponse.json({ success: true });
+
+} catch (err) {
+
+console.error('[admin/coupons DELETE] error:', err);
+
+return NextResponse.json({ error: 'Could not delete coupon' }, { status: 400 });
+
+}
+
+}

@@ -1,0 +1,225 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  BANK_TRANSFER
+  CARD
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+}
+
+enum BannerType {
+  HERO
+  PROMO
+  GALLERY
+}
+
+enum NotificationType {
+  ORDER
+  LOW_STOCK
+  OUT_OF_STOCK
+  MESSAGE
+}
+
+model User {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  password  String
+  phone     String?
+  role      Role      @default(CUSTOMER)
+  addresses Address[]
+  orders    Order[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String
+  fullName  String
+  phone     String
+  street    String
+  area      String
+  city      String   @default("Lahore")
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  image       String?
+  position    Int       @default(0)
+  isActive    Boolean   @default(true)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id             String      @id @default(cuid())
+  name           String
+  slug           String      @unique
+  description    String
+  price          Int
+  compareAtPrice Int?
+  images         String[]    @default([])
+  categoryId     String
+  category       Category    @relation(fields: [categoryId], references: [id])
+  isFeatured     Boolean     @default(false)
+  isAvailable    Boolean     @default(true)
+  stock          Int         @default(50)
+  sku            String?     @unique
+  tags           String[]    @default([])
+  orderItems     OrderItem[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([categoryId])
+}
+
+model Order {
+  id            String        @id @default(cuid())
+  orderNumber   String        @unique
+  userId        String?
+  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items         OrderItem[]
+  customerName  String
+  customerEmail String
+  customerPhone String
+  deliveryType  String        @default("delivery")
+  address       String?
+  area          String?
+  city          String?
+  branch        String?
+  subtotal      Int
+  discount      Int           @default(0)
+  deliveryFee   Int           @default(0)
+  total         Int
+  couponCode    String?
+  paymentMethod PaymentMethod @default(COD)
+  status        OrderStatus   @default(PENDING)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name      String
+  image     String?
+  price     Int
+  quantity  Int
+
+  @@index([orderId])
+}
+
+model Coupon {
+  id             String     @id @default(cuid())
+  code           String     @unique
+  type           CouponType
+  value          Int
+  minOrderAmount Int        @default(0)
+  maxUses        Int?
+  usedCount      Int        @default(0)
+  isActive       Boolean    @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime   @default(now())
+}
+
+model Banner {
+  id        String     @id @default(cuid())
+  type      BannerType @default(HERO)
+  title     String?
+  subtitle  String?
+  image     String
+  link      String?
+  position  Int        @default(0)
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String
+  status    String   @default("new")
+  createdAt DateTime @default(now())
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  body      String
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+model SiteSettings {
+  id              String   @id @default("settings")
+  siteName        String   @default("Pink Pistachio")
+  tagline         String?  @default("Boutique Cafe & Patisserie")
+  logo            String?
+  primaryPhone    String?  @default("+92 300 1234567")
+  primaryEmail    String?  @default("hello@pinkpistachio.pk")
+  whatsappNumber  String?  @default("+92 300 1234567")
+  instagramUrl    String?  @default("https://www.instagram.com/pistachio.pink")
+  facebookUrl     String?
+  deliveryFee     Int      @default(150)
+  freeDeliveryMin Int      @default(3000)
+  aboutText       String?
+  updatedAt       DateTime @updatedAt
+}
