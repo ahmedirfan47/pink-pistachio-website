@@ -16,7 +16,20 @@ import { Tag, Loader2 } from 'lucide-react';
 
 type CheckoutForm = z.infer<typeof checkoutSchema>;
 
+import { Suspense } from 'react';
+import CheckoutInner from './CheckoutInner';
+
 export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="container-px mx-auto max-w-6xl py-12 text-center text-charcoal-600">
+        Loading checkout...
+      </div>
+    }>
+      <CheckoutInner />
+    </Suspense>
+  );
+} {
   const router = useRouter();
   const { data: session } = useSession();
   const { items, getSubtotal, clearCart } = useCartStore();
