@@ -52,14 +52,41 @@ interface Stats {
   lowStock: LowStockItem[];
 }
 
-// Type-safe Recharts tooltip formatter for recharts v3
-function revenueFormatter(value: number | string | Array<number | string> | undefined): string {
-  if (typeof value === 'number') return formatPrice(value);
-  return String(value ?? '');
+interface TooltipPayload {
+  value?: number;
+  name?: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  label?: string;
+}
+
+function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
+  if (!active || !payload || payload.length === 0) return null;
+  const revenue = typeof payload[0]?.value === 'number' ? payload[0].value : 0;
+  return (
+    <div
+      style={{
+        background: '#fff',
+        border: '1px solid #FBC9DC',
+        borderRadius: 12,
+        padding: '8px 14px',
+        fontSize: 12,
+        boxShadow: '0 4px 16px rgba(176,56,98,0.10)',
+      }}
+    >
+      <p style={{ color: '#5A4A4A', marginBottom: 4, fontWeight: 500 }}>{label}</p>
+      <p style={{ color: '#CC3F78', fontWeight: 700 }}>{formatPrice(revenue)}</p>
+    </div>
+  );
 }
 
 function yAxisFormatter(v: number | string): string {
-  if (typeof v === 'number') return v >= 1000 ? (v / 1000).toFixed(0) + 'k' : String(v);
+  if (typeof v === 'number') {
+    return v >= 1000 ? (v / 1000).toFixed(0) + 'k' : String(v);
+  }
   return String(v);
 }
 
@@ -85,7 +112,7 @@ export default function DashboardClient() {
 
   return (
     <div className="space-y-6">
-      {/* KPI cards row 1 */}
+      {/* KPI row 1 */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Total Revenue"
@@ -113,7 +140,7 @@ export default function DashboardClient() {
         />
       </div>
 
-      {/* KPI cards row 2 */}
+      {/* KPI row 2 */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatCard
           label="Today's Revenue"
@@ -141,8 +168,15 @@ export default function DashboardClient() {
           </h2>
           <div className="mt-4 h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#FCE4ED" vertical={false} />
+              <BarChart
+                data={stats.chartData}
+                margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#FCE4ED"
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="date"
                   stroke="#5A4A4A"
@@ -157,31 +191,33 @@ export default function DashboardClient() {
                   axisLine={false}
                   tickFormatter={yAxisFormatter}
                 />
-                <Tooltip
-                  formatter={revenueFormatter}
-                  contentStyle={{
-                    borderRadius: 12,
-                    border: '1px solid #FBC9DC',
-                    fontSize: 12,
-                  }}
-                  cursor={{ fill: '#FDF2F6' }}
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: '#FDF2F6' }} />
+                <Bar
+                  dataKey="revenue"
+                  fill="#CC3F78"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={48}
                 />
-                <Bar dataKey="revenue" fill="#CC3F78" radius={[6, 6, 0, 0]} maxBarSize={48} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         <div className="card p-6">
-          <h2 className="font-display text-lg font-bold text-charcoal">Top Selling Items</h2>
+          <h2 className="font-display text-lg font-bold text-charcoal">
+            Top Selling Items
+          </h2>
           <div className="mt-4 space-y-3">
             {stats.topProducts.length === 0 ? (
               <p className="text-sm text-charcoal-600">No sales data yet.</p>
             ) : (
               stats.topProducts.map((p, idx) => (
-                <div key={p.name} className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2 text-charcoal">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-pink-100 text-xs font-bold text-pink-600">
+                <div
+                  key={p.name}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <span className="flex items-center gap-2 text-charcoal min-w-0">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pink-100 text-xs font-bold text-pink-600">
                       {idx + 1}
                     </span>
                     <span className="line-clamp-1">{p.name}</span>
@@ -200,7 +236,9 @@ export default function DashboardClient() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="card p-6 lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-display text-lg font-bold text-charcoal">Recent Orders</h2>
+            <h2 className="font-display text-lg font-bold text-charcoal">
+              Recent Orders
+            </h2>
             <Link
               href="/admin/orders"
               className="text-sm font-semibold text-pink-600 hover:underline"
@@ -221,7 +259,10 @@ export default function DashboardClient() {
               <tbody>
                 {stats.recentOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-6 text-center text-charcoal-600">
+                    <td
+                      colSpan={4}
+                      className="py-6 text-center text-charcoal-600"
+                    >
                       No orders yet.
                     </td>
                   </tr>
@@ -231,7 +272,9 @@ export default function DashboardClient() {
                       <td className="py-3 pr-4 font-mono text-xs font-bold text-charcoal">
                         {o.orderNumber}
                       </td>
-                      <td className="py-3 pr-4 text-charcoal-600">{o.customerName}</td>
+                      <td className="py-3 pr-4 text-charcoal-600">
+                        {o.customerName}
+                      </td>
                       <td className="py-3 pr-4 font-semibold text-charcoal">
                         {formatPrice(o.total)}
                       </td>
@@ -263,7 +306,10 @@ export default function DashboardClient() {
               <p className="text-sm text-charcoal-600">All items well stocked.</p>
             ) : (
               stats.lowStock.map((p) => (
-                <div key={p.id} className="flex items-center justify-between text-sm">
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between text-sm"
+                >
                   <span className="line-clamp-1 text-charcoal">{p.name}</span>
                   <span className="ml-2 shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
                     {p.stock} left
