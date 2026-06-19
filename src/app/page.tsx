@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 import ProductCard from '@/components/storefront/ProductCard';
 import { BRANCHES } from '@/lib/constants';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   const [heroBanner, featuredProducts, galleryBanners, categories] = await Promise.all([

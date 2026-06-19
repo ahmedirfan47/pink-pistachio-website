@@ -9,8 +9,7 @@ export const metadata: Metadata = {
   title: 'Menu',
   description: 'Browse the full Pink Pistachio menu — specialty coffee, croissants, vintage cakes, artisan bread, brunch, sandwiches and more.',
 };
-
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 interface MenuPageProps {
   searchParams: { category?: string; q?: string };
