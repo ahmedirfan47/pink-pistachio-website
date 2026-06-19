@@ -2,19 +2,47 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Search, X, Loader2, Package, Download, RefreshCw } from 'lucide-react';
-import { formatPrice, formatDate, ORDER_STATUSES, STATUS_LABELS, STATUS_COLORS, cn } from '@/lib/utils';
+import {
+  formatPrice,
+  formatDate,
+  ORDER_STATUSES,
+  STATUS_LABELS,
+  STATUS_COLORS,
+  cn,
+} from '@/lib/utils';
 
-interface OrderItem { id: string; name: string; quantity: number; price: number; image: string | null }
-interface Order {
-  id: string; orderNumber: string; customerName: string; customerEmail: string;
-  customerPhone: string; status: string; total: number; subtotal: number;
-  discount: number; deliveryFee: number; deliveryType: string; address: string | null;
-  area: string | null; city: string | null; branch: string | null;
-  paymentMethod: string; couponCode: string | null; notes: string | null;
-  createdAt: string; items: OrderItem[];
+interface OrderItem {
+  id: string;
+  name: string;
+  quantity: number;
+  price: number;
+  image: string | null;
 }
 
-const AUTO_REFRESH_INTERVAL = 60_000; // 1 minute
+interface Order {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  status: string;
+  total: number;
+  subtotal: number;
+  discount: number;
+  deliveryFee: number;
+  deliveryType: string;
+  address: string | null;
+  area: string | null;
+  city: string | null;
+  branch: string | null;
+  paymentMethod: string;
+  couponCode: string | null;
+  notes: string | null;
+  createdAt: string;
+  items: OrderItem[];
+}
+
+const AUTO_REFRESH_INTERVAL = 60_000;
 
 export default function OrdersClient() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -27,30 +55,33 @@ export default function OrdersClient() {
   const [exporting, setExporting] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  const fetchOrders = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    else setRefreshing(true);
-    const params = new URLSearchParams();
-    if (search) params.set('q', search);
-    if (statusFilter) params.set('status', statusFilter);
-    try {
-      const res = await fetch('/api/admin/orders?' + params.toString(), { cache: 'no-store' });
-      const data = await res.json();
-      setOrders(data);
-      setLastUpdated(new Date());
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [search, statusFilter]);
+  const fetchOrders = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true);
+      else setRefreshing(true);
+      const params = new URLSearchParams();
+      if (search) params.set('q', search);
+      if (statusFilter) params.set('status', statusFilter);
+      try {
+        const res = await fetch('/api/admin/orders?' + params.toString(), {
+          cache: 'no-store',
+        });
+        const data = await res.json();
+        setOrders(data);
+        setLastUpdated(new Date());
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [search, statusFilter]
+  );
 
-  // Initial + search/filter changes
   useEffect(() => {
     const t = setTimeout(() => fetchOrders(false), search ? 400 : 0);
     return () => clearTimeout(t);
-  }, [search, statusFilter]);
+  }, [search, statusFilter, fetchOrders]);
 
-  // Auto-refresh silently
   useEffect(() => {
     const interval = setInterval(() => fetchOrders(true), AUTO_REFRESH_INTERVAL);
     return () => clearInterval(interval);
@@ -66,7 +97,7 @@ export default function OrdersClient() {
     const data = await res.json();
     if (res.ok) {
       setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
-      if (selected?.id === id) setSelected({ ...selected, status });
+      if (selected?.id === id) setSelected((prev) => prev ? { ...prev, status } : prev);
     } else {
       alert(data.error ?? 'Could not update status');
     }
@@ -83,7 +114,8 @@ export default function OrdersClient() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'pink-pistachio-orders-' + new Date().toISOString().slice(0, 10) + '.csv';
+      a.download =
+        'pink-pistachio-orders-' + new Date().toISOString().slice(0, 10) + '.csv';
       a.click();
       URL.revokeObjectURL(url);
     } finally {
@@ -92,6 +124,30 @@ export default function OrdersClient() {
   };
 
   const pendingCount = orders.filter((o) => o.status === 'PENDING').length;
+
+  // Build detail rows for the selected order modal — fully typed, no filter(Boolean)
+  function buildDetailRows(order: Order): { label: string; value: string }[] {
+    const rows: { label: string; value: string }[] = [
+      { label: 'Customer', value: order.customerName },
+      { label: 'Email',    value: order.customerEmail },
+      { label: 'Phone',    value: order.customerPhone },
+      { label: 'Payment',  value: order.paymentMethod.replace(/_/g, ' ') },
+      {
+        label: 'Fulfilment',
+        value:
+          order.deliveryType === 'pickup'
+            ? 'Pickup — ' + (order.branch ?? '')
+            : 'Delivery — ' +
+              [order.address, order.area, order.city]
+                .filter((v): v is string => Boolean(v))
+                .join(', '),
+      },
+    ];
+    if (order.notes) {
+      rows.push({ label: 'Notes', value: order.notes });
+    }
+    return rows;
+  }
 
   return (
     <div>
@@ -113,7 +169,9 @@ export default function OrdersClient() {
         >
           <option value="">All Statuses</option>
           {ORDER_STATUSES.map((s) => (
-            <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+            <option key={s} value={s}>
+              {STATUS_LABELS[s]}
+            </option>
           ))}
         </select>
         <button
@@ -129,17 +187,19 @@ export default function OrdersClient() {
           disabled={exporting}
           className="btn-secondary ml-auto px-4 py-2.5"
         >
-          {exporting
-            ? <Loader2 className="h-4 w-4 animate-spin" />
-            : <Download className="h-4 w-4" />}
+          {exporting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
           Export CSV
         </button>
       </div>
 
       {/* Stats strip */}
-      <div className="mb-4 flex flex-wrap gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="card-flat flex items-center gap-2 px-4 py-2.5 text-sm">
-          <span className="font-medium text-charcoal-600">Total:</span>
+          <span className="text-charcoal-600 font-medium">Total:</span>
           <span className="font-bold text-charcoal">{orders.length}</span>
         </div>
         {pendingCount > 0 && (
@@ -148,9 +208,9 @@ export default function OrdersClient() {
             <span className="font-semibold text-amber-700">{pendingCount} Pending</span>
           </div>
         )}
-        <div className="ml-auto text-xs text-charcoal-600/50">
+        <p className="ml-auto text-xs text-charcoal-600/50">
           Updated {lastUpdated.toLocaleTimeString()}
-        </div>
+        </p>
       </div>
 
       {/* Table */}
@@ -182,16 +242,25 @@ export default function OrdersClient() {
                 </tr>
               ) : (
                 orders.map((o) => (
-                  <tr key={o.id} className="border-b border-pink-50 transition-colors hover:bg-pink-50/30">
+                  <tr
+                    key={o.id}
+                    className="border-b border-pink-50 transition-colors hover:bg-pink-50/30"
+                  >
                     <td className="px-4 py-3">
-                      <span className="font-mono text-xs font-bold text-charcoal">{o.orderNumber}</span>
+                      <span className="font-mono text-xs font-bold text-charcoal">
+                        {o.orderNumber}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-charcoal">{o.customerName}</p>
                       <p className="text-xs text-charcoal-600">{o.customerPhone}</p>
                     </td>
-                    <td className="px-4 py-3 text-xs text-charcoal-600">{formatDate(o.createdAt)}</td>
-                    <td className="px-4 py-3 font-semibold text-charcoal">{formatPrice(o.total)}</td>
+                    <td className="px-4 py-3 text-xs text-charcoal-600">
+                      {formatDate(o.createdAt)}
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-charcoal">
+                      {formatPrice(o.total)}
+                    </td>
                     <td className="px-4 py-3">
                       <select
                         value={o.status}
@@ -203,7 +272,9 @@ export default function OrdersClient() {
                         )}
                       >
                         {ORDER_STATUSES.map((s) => (
-                          <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                          <option key={s} value={s}>
+                            {STATUS_LABELS[s]}
+                          </option>
                         ))}
                       </select>
                     </td>
@@ -227,16 +298,23 @@ export default function OrdersClient() {
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/40 p-4 backdrop-blur-sm">
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-hover admin-scroll">
+            {/* Header */}
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="font-display text-xl font-bold text-charcoal">{selected.orderNumber}</h2>
+                <h2 className="font-display text-xl font-bold text-charcoal">
+                  {selected.orderNumber}
+                </h2>
                 <p className="text-xs text-charcoal-600">{formatDate(selected.createdAt)}</p>
               </div>
-              <button onClick={() => setSelected(null)} className="rounded-xl p-2 hover:bg-pink-50">
+              <button
+                onClick={() => setSelected(null)}
+                className="rounded-xl p-2 hover:bg-pink-50"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
+            {/* Status updater */}
             <div className="mb-4">
               <label className="label-field">Update Status</label>
               <select
@@ -249,52 +327,58 @@ export default function OrdersClient() {
                 )}
               >
                 {ORDER_STATUSES.map((s) => (
-                  <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                  <option key={s} value={s}>
+                    {STATUS_LABELS[s]}
+                  </option>
                 ))}
               </select>
             </div>
 
+            {/* Detail rows — fully typed array, no filter(Boolean) destructure */}
             <div className="space-y-1.5 text-sm">
-              {[
-                ['Customer', selected.customerName],
-                ['Email', selected.customerEmail],
-                ['Phone', selected.customerPhone],
-                ['Payment', selected.paymentMethod.replace('_', ' ')],
-                ['Fulfilment', selected.deliveryType === 'pickup'
-                  ? 'Pickup — ' + selected.branch
-                  : 'Delivery — ' + [selected.address, selected.area, selected.city].filter(Boolean).join(', ')],
-                selected.notes ? ['Notes', selected.notes] : null,
-              ].filter(Boolean).map(([label, value]) => (
-                <div key={label as string} className="flex gap-2">
+              {buildDetailRows(selected).map(({ label, value }) => (
+                <div key={label} className="flex gap-2">
                   <span className="w-24 shrink-0 font-semibold text-charcoal">{label}:</span>
                   <span className="text-charcoal-600">{value}</span>
                 </div>
               ))}
             </div>
 
+            {/* Items */}
             <div className="mt-5 space-y-2 border-t border-pink-100 pt-4">
               <p className="text-sm font-semibold text-charcoal">Items</p>
               {selected.items.map((item) => (
                 <div key={item.id} className="flex items-center justify-between text-sm">
-                  <span className="text-charcoal">{item.name} x{item.quantity}</span>
-                  <span className="font-medium">{formatPrice(item.price * item.quantity)}</span>
+                  <span className="text-charcoal">
+                    {item.name} x{item.quantity}
+                  </span>
+                  <span className="font-medium text-charcoal">
+                    {formatPrice(item.price * item.quantity)}
+                  </span>
                 </div>
               ))}
             </div>
 
+            {/* Totals */}
             <div className="mt-4 space-y-1.5 border-t border-pink-100 pt-4 text-sm">
               <div className="flex justify-between text-charcoal-600">
-                <span>Subtotal</span><span>{formatPrice(selected.subtotal)}</span>
+                <span>Subtotal</span>
+                <span>{formatPrice(selected.subtotal)}</span>
               </div>
               {selected.discount > 0 && (
                 <div className="flex justify-between text-pistachio-600">
-                  <span>Discount{selected.couponCode ? ' (' + selected.couponCode + ')' : ''}</span>
+                  <span>
+                    Discount
+                    {selected.couponCode ? ' (' + selected.couponCode + ')' : ''}
+                  </span>
                   <span>-{formatPrice(selected.discount)}</span>
                 </div>
               )}
               <div className="flex justify-between text-charcoal-600">
                 <span>Delivery</span>
-                <span>{selected.deliveryFee === 0 ? 'Free' : formatPrice(selected.deliveryFee)}</span>
+                <span>
+                  {selected.deliveryFee === 0 ? 'Free' : formatPrice(selected.deliveryFee)}
+                </span>
               </div>
               <div className="flex justify-between border-t border-pink-100 pt-2 text-base font-bold text-charcoal">
                 <span>Total</span>
