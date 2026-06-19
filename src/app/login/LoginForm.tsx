@@ -8,7 +8,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { loginSchema } from '@/lib/validations';
-import { Loader2, Lock, Mail } from 'lucide-react';
+import { Loader2, Lock, Mail, AlertCircle } from 'lucide-react';
 
 type LoginForm = z.infer<typeof loginSchema>;
 
@@ -16,29 +16,62 @@ export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
+  } = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
+  });
 
   const onSubmit = async (data: LoginForm) => {
     setError('');
-    const res = await signIn('credentials', { ...data, redirect: false });
-    if (res?.error) {
-      setError('Invalid email or password.');
-      return;
+    setLoading(true);
+
+    try {
+      const res = await signIn('credentials', {
+        email: data.email.toLowerCase().trim(),
+        password: data.password,
+        redirect: false,
+      });
+
+      if (!res) {
+        setError('Authentication failed. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      if (res.error) {
+        setError('Invalid email or password. Please check your credentials.');
+        setLoading(false);
+        return;
+      }
+
+      if (res.ok) {
+        // Use the callbackUrl from searchParams, but validate it's a relative path
+        const rawCallback = searchParams.get('callbackUrl');
+        const callbackUrl =
+          rawCallback && rawCallback.startsWith('/')
+            ? rawCallback
+            : '/account';
+
+        router.push(callbackUrl);
+        router.refresh();
+      }
+    } catch {
+      setError('Something went wrong. Please try again.');
+      setLoading(false);
     }
-    const callbackUrl = searchParams.get('callbackUrl') || '/account';
-    router.push(callbackUrl);
-    router.refresh();
   };
+
+  const busy = isSubmitting || loading;
 
   return (
     <div className="w-full card p-8">
       <div className="mb-6 text-center">
-        <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-pink-600 font-display text-lg font-bold text-white">
+        <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-pink-600 font-display text-xl font-bold text-white shadow-float">
           PP
         </span>
         <h1 className="font-display text-2xl font-bold text-charcoal">Welcome Back</h1>
@@ -55,6 +88,7 @@ export default function LoginForm() {
             <input
               {...register('email')}
               type="email"
+              autoComplete="email"
               className="input-field pl-11"
               placeholder="you@example.com"
             />
@@ -71,6 +105,7 @@ export default function LoginForm() {
             <input
               {...register('password')}
               type="password"
+              autoComplete="current-password"
               className="input-field pl-11"
               placeholder="••••••••"
             />
@@ -80,17 +115,26 @@ export default function LoginForm() {
           )}
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <div className="flex items-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {error}
+          </div>
+        )}
 
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={busy}
           className="btn-primary w-full"
         >
-          {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-          Login
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+          {busy ? 'Signing in...' : 'Login'}
         </button>
       </form>
+
+      <div className="mt-4 rounded-2xl bg-pink-50 px-4 py-3 text-center text-xs text-charcoal-600">
+        Admin? Login with <span className="font-semibold text-charcoal">admin@pinkpistachio.pk</span>
+      </div>
 
       <p className="mt-6 text-center text-sm text-charcoal-600">
         Don&apos;t have an account?{' '}
@@ -100,4 +144,4 @@ export default function LoginForm() {
       </p>
     </div>
   );
-}
+}}
