@@ -3,16 +3,21 @@ import { db } from '@/lib/db';
 import { requireAdminApi } from '@/lib/admin-guard';
 import { couponSchema } from '@/lib/validations';
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await requireAdminApi();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { id } = await params;
 
   try {
     const body = await req.json();
     const data = couponSchema.parse(body);
 
     const coupon = await db.coupon.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         code: data.code.toUpperCase(),
         type: data.type,
@@ -39,19 +44,18 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await requireAdminApi();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const { id } = await params;
+
   try {
-    await db.coupon.delete({ where: { id: params.id } });
+    await db.coupon.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('[admin/coupons DELETE] error:', err);
-    return NextResponse.json(
-      { error: 'Could not delete coupon' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Could not delete coupon' }, { status: 400 });
   }
 }
