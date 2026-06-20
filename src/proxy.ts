@@ -1,28 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import { verifyToken, COOKIE_NAME } from '@/lib/auth-token';
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Always pass NextAuth routes through untouched
+  // Pass all auth API routes through
   if (pathname.startsWith('/api/auth')) {
     return NextResponse.next();
   }
 
-  let token = null;
-  try {
-    token = await getToken({
-      req,
-      secret: process.env.NEXTAUTH_SECRET,
-    });
-  } catch {
-    token = null;
-  }
-
-  const role = (token as any)?.role;
+  const token = req.cookies.get(COOKIE_NAME)?.value ?? null;
+  const session = token ? verifyToken(token) : null;
+  const role = session?.role;
 
   if (pathname.startsWith('/admin')) {
-    if (!token || role !== 'ADMIN') {
+    if (!session || role !== 'ADMIN') {
       const url = new URL('/login', req.url);
       url.searchParams.set('callbackUrl', pathname);
       return NextResponse.redirect(url);
@@ -30,7 +22,7 @@ export async function proxy(req: NextRequest) {
   }
 
   if (pathname.startsWith('/account')) {
-    if (!token) {
+    if (!session) {
       const url = new URL('/login', req.url);
       url.searchParams.set('callbackUrl', pathname);
       return NextResponse.redirect(url);
