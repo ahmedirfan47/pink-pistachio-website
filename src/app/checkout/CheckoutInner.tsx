@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useSession } from 'next-auth/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { checkoutSchema } from '@/lib/validations';
@@ -13,22 +12,21 @@ import { useCartStore } from '@/lib/cart-store';
 import { formatPrice } from '@/lib/utils';
 import { BRANCHES } from '@/lib/constants';
 import { Tag, Loader2 } from 'lucide-react';
+import { useSession } from '@/lib/session-context';
 
 type CheckoutForm = z.infer<typeof checkoutSchema>;
 
 export default function CheckoutInner() {
-  const router = useRouter();
-  const { data: session } = useSession();
+  const router          = useRouter();
+  const { session }     = useSession();
   const { items, getSubtotal, clearCart } = useCartStore();
-  const subtotal = getSubtotal();
+  const subtotal        = getSubtotal();
 
-  const [deliveryFee, setDeliveryFee] = useState(150);
+  const [deliveryFee,    setDeliveryFee]    = useState(150);
   const [freeDeliveryMin, setFreeDeliveryMin] = useState(3000);
-  const [couponInput, setCouponInput] = useState('');
-  const [couponStatus, setCouponStatus] = useState<{
-    valid: boolean;
-    message: string;
-    discount: number;
+  const [couponInput,    setCouponInput]    = useState('');
+  const [couponStatus,   setCouponStatus]   = useState<{
+    valid: boolean; message: string; discount: number;
   } | null>(null);
   const [serverError, setServerError] = useState('');
 
@@ -41,10 +39,10 @@ export default function CheckoutInner() {
   } = useForm<CheckoutForm>({
     resolver: zodResolver(checkoutSchema),
     defaultValues: {
-      deliveryType: 'delivery',
+      deliveryType:  'delivery',
       paymentMethod: 'COD',
-      city: 'Lahore',
-      customerName: '',
+      city:          'Lahore',
+      customerName:  '',
       customerEmail: '',
     },
   });
@@ -55,7 +53,7 @@ export default function CheckoutInner() {
     fetch('/api/settings')
       .then((r) => r.json())
       .then((data) => {
-        if (data?.deliveryFee !== undefined) setDeliveryFee(data.deliveryFee);
+        if (data?.deliveryFee     !== undefined) setDeliveryFee(data.deliveryFee);
         if (data?.freeDeliveryMin !== undefined) setFreeDeliveryMin(data.freeDeliveryMin);
       })
       .catch(() => {});
@@ -63,8 +61,8 @@ export default function CheckoutInner() {
 
   useEffect(() => {
     if (session?.user) {
-      setValue('customerName', session.user.name || '');
-      setValue('customerEmail', session.user.email || '');
+      setValue('customerName',  session.user.name  ?? '');
+      setValue('customerEmail', session.user.email ?? '');
     }
   }, [session, setValue]);
 
@@ -76,15 +74,15 @@ export default function CheckoutInner() {
       : deliveryFee;
 
   const discount = couponStatus?.valid ? couponStatus.discount : 0;
-  const total = Math.max(0, subtotal - discount) + effectiveDeliveryFee;
+  const total    = Math.max(0, subtotal - discount) + effectiveDeliveryFee;
 
   const applyCoupon = async () => {
     if (!couponInput) return;
     try {
       const res = await fetch('/api/coupons/validate', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: couponInput, subtotal }),
+        body:    JSON.stringify({ code: couponInput, subtotal }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -103,16 +101,16 @@ export default function CheckoutInner() {
     setServerError('');
     try {
       const res = await fetch('/api/orders', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body:    JSON.stringify({
           ...data,
           items: items.map((i) => ({
             productId: i.productId,
-            name: i.name,
-            image: i.image,
-            price: i.price,
-            quantity: i.quantity,
+            name:      i.name,
+            image:     i.image,
+            price:     i.price,
+            quantity:  i.quantity,
           })),
         }),
       });
@@ -149,8 +147,9 @@ export default function CheckoutInner() {
         onSubmit={handleSubmit(onSubmit)}
         className="grid gap-10 lg:grid-cols-[1fr_380px]"
       >
-        {/* Left column */}
+        {/* ── Left column ── */}
         <div className="space-y-6">
+
           {/* Contact */}
           <div className="card p-6">
             <h2 className="font-display text-lg font-bold text-charcoal">
@@ -221,8 +220,12 @@ export default function CheckoutInner() {
                   className="h-4 w-4 accent-pink-600"
                 />
                 <div>
-                  <p className="text-sm font-semibold text-charcoal">Home Delivery</p>
-                  <p className="text-xs text-charcoal-600">Delivered across Lahore</p>
+                  <p className="text-sm font-semibold text-charcoal">
+                    Home Delivery
+                  </p>
+                  <p className="text-xs text-charcoal-600">
+                    Delivered across Lahore
+                  </p>
                 </div>
               </label>
               <label
@@ -241,7 +244,9 @@ export default function CheckoutInner() {
                 />
                 <div>
                   <p className="text-sm font-semibold text-charcoal">Pickup</p>
-                  <p className="text-xs text-charcoal-600">Free — collect from branch</p>
+                  <p className="text-xs text-charcoal-600">
+                    Free — collect from branch
+                  </p>
                 </div>
               </label>
             </div>
@@ -256,7 +261,9 @@ export default function CheckoutInner() {
                     placeholder="House #, Street, Block"
                   />
                   {errors.address && (
-                    <p className="mt-1 text-xs text-red-600">{errors.address.message}</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {errors.address.message}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -297,9 +304,9 @@ export default function CheckoutInner() {
             </h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               {[
-                { value: 'COD', label: 'Cash on Delivery' },
-                { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
-                { value: 'CARD', label: 'Card (at branch)' },
+                { value: 'COD',           label: 'Cash on Delivery' },
+                { value: 'BANK_TRANSFER', label: 'Bank Transfer'    },
+                { value: 'CARD',          label: 'Card (at branch)' },
               ].map((opt) => (
                 <label
                   key={opt.value}
@@ -329,7 +336,7 @@ export default function CheckoutInner() {
           </div>
         </div>
 
-        {/* Right column — summary */}
+        {/* ── Right column — summary ── */}
         <div className="card h-fit space-y-4 p-6">
           <h2 className="font-display text-lg font-bold text-charcoal">
             Order Summary
@@ -349,13 +356,13 @@ export default function CheckoutInner() {
                     />
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-charcoal line-clamp-1">
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-1 text-sm font-medium text-charcoal">
                     {item.name}
                   </p>
                   <p className="text-xs text-charcoal-600">Qty {item.quantity}</p>
                 </div>
-                <p className="text-sm font-semibold text-charcoal shrink-0">
+                <p className="shrink-0 text-sm font-semibold text-charcoal">
                   {formatPrice(item.price * item.quantity)}
                 </p>
               </div>
@@ -396,7 +403,9 @@ export default function CheckoutInner() {
           <div className="space-y-2 border-t border-pink-100 pt-4 text-sm">
             <div className="flex justify-between text-charcoal-600">
               <span>Subtotal</span>
-              <span className="font-medium text-charcoal">{formatPrice(subtotal)}</span>
+              <span className="font-medium text-charcoal">
+                {formatPrice(subtotal)}
+              </span>
             </div>
             {discount > 0 && (
               <div className="flex justify-between text-pistachio-600">
@@ -407,7 +416,9 @@ export default function CheckoutInner() {
             <div className="flex justify-between text-charcoal-600">
               <span>Delivery Fee</span>
               <span className="font-medium text-charcoal">
-                {effectiveDeliveryFee === 0 ? 'Free' : formatPrice(effectiveDeliveryFee)}
+                {effectiveDeliveryFee === 0
+                  ? 'Free'
+                  : formatPrice(effectiveDeliveryFee)}
               </span>
             </div>
             <div className="flex justify-between border-t border-pink-100 pt-2 text-base font-bold text-charcoal">
@@ -416,7 +427,9 @@ export default function CheckoutInner() {
             </div>
           </div>
 
-          {serverError && <p className="text-sm text-red-600">{serverError}</p>}
+          {serverError && (
+            <p className="text-sm text-red-600">{serverError}</p>
+          )}
 
           <button
             type="submit"
@@ -426,6 +439,7 @@ export default function CheckoutInner() {
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
             {isSubmitting ? 'Placing Order...' : 'Place Order'}
           </button>
+
           <p className="text-center text-xs text-charcoal-600">
             By placing this order you agree to our terms of service.
           </p>
