@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from 'next/cache';
 import { db } from '@/lib/db';
 import ProductCard from '@/components/storefront/ProductCard';
 import Link from 'next/link';
@@ -7,65 +8,55 @@ import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
 
+// Static metadata — avoids any build-time searchParams conflict
+export const metadata: Metadata = {
+  title: 'Menu',
+  description:
+    'Browse the full Pink Pistachio menu — specialty coffee, croissants, vintage cakes, artisan bread, brunch, sandwiches and more.',
+};
+
 interface MenuPageProps {
   searchParams: Promise<{ category?: string; q?: string }>;
 }
 
-export async function generateMetadata({
-  searchParams,
-}: MenuPageProps): Promise<Metadata> {
-  const { category } = await searchParams;
-
-  if (!category) {
-    return {
-      title: 'Menu',
-      description:
-        'Browse the full Pink Pistachio menu — specialty coffee, croissants, vintage cakes, artisan bread, brunch, sandwiches and more.',
-    };
-  }
-
-  const cat = await db.category
-    .findUnique({
-      where: { slug: category },
-      select: { name: true, description: true },
-    })
-    .catch(() => null);
-
-  return {
-    title: cat?.name ?? 'Menu',
-    description:
-      cat?.description ??
-      'Browse the full Pink Pistachio menu — baked fresh in our Lahore kitchens.',
-  };
-}
-
 export default async function MenuPage({ searchParams }: MenuPageProps) {
+  // Hard opt-out of ALL caching — overrides Turbopack static analysis
+  noStore();
+
+  // Await searchParams — required in Next.js 15/16
   const { category, q } = await searchParams;
 
-  const [categories, products] = await Promise.all([
-    db.category.findMany({
-      where: { isActive: true },
-      orderBy: { position: 'asc' },
-    }),
-    db.product.findMany({
-      where: {
-        ...(category ? { category: { slug: category } } : {}),
-        ...(q
-          ? {
-              OR: [
-                { name: { contains: q, mode: 'insensitive' } },
-                { description: { contains: q, mode: 'insensitive' } },
-                { tags: { hasSome: [q.toLowerCase()] } },
-              ],
-            }
-          : {}),
-      },
-      orderBy: { name: 'asc' },
-      include: { category: true },
-    }),
-  ]);
+  // Step 1: Always fetch all categories first (no searchParams dependency)
+  const categories = await db.category.findMany({
+    where: { isActive: true },
+    orderBy: { position: 'asc' },
+  });
 
-  const activeCategory = categories.find((c) => c.slug === category);
+  // Step 2: Resolve the active category object from the slug
+  // Then filter by categoryId directly — avoids relational slug filter bug
+  const activeCategory = category
+    ? categories.find((c) => c.slug === category) ?? null
+    : null;
+
+  // Step 3: Query products using direct categoryId (not relational slug)
+  const products = await db.product.findMany({
+    where: {
+      // Direct ID match — simpler, faster, and more reliable than relation filter
+      ...(activeCategory ? { categoryId: activeCategory.id } : {}),
+      // Search filter
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: q, mode: 'insensitive' } },
+              { description: { contains: q, mode: 'insensitive' } },
+              { tags: { hasSome: [q.toLowerCase()] } },
+            ],
+          }
+        : {}),
+    },
+    orderBy: { name: 'asc' },
+    include: { category: true },
+  });
 
   return (
     <div className="container-px mx-auto max-w-7xl py-12">
@@ -126,8 +117,8 @@ export default async function MenuPage({ searchParams }: MenuPageProps) {
         ))}
       </div>
 
-      {/* Results info when filtering */}
-      {(category || q) && products.length > 0 && (
+      {/* Results info */}
+      {(activeCategory || q) && products.length > 0 && (
         <p className="mb-6 text-sm text-charcoal-600">
           Showing{' '}
           <span className="font-semibold text-charcoal">{products.length}</span>{' '}
@@ -145,10 +136,7 @@ export default async function MenuPage({ searchParams }: MenuPageProps) {
       {products.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-pink-200 py-16 text-center text-charcoal-600">
           No items found.{' '}
-          <Link
-            href="/menu"
-            className="font-semibold text-pink-600 hover:underline"
-          >
+          <Link href="/menu" className="font-semibold text-pink-600 hover:underline">
             Clear filters
           </Link>
         </div>
