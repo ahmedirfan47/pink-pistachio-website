@@ -3,7 +3,7 @@ import CartInner from './CartInner';
 
 export const metadata: Metadata = {
   title: 'Cart',
-  description: 'Review your Pink Pistachio order before checkout.',
+  description: 'Review your Pink Pistachio order and proceed to checkout.',
 };
 
 export default function CartPage() {

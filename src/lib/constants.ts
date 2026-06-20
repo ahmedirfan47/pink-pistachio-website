@@ -4,7 +4,8 @@ export const SITE = {
   tagline: 'Boutique Café & Patisserie',
   description:
     'Pink Pistachio is a boutique café and patisserie in Lahore serving specialty coffee, vintage butter cream cakes, artisan bread, croissants and an all-day brunch menu — with branches in DHA Raya and Gulberg.',
-  url: 'https://pinkpistachio.pk',
+  // Use the live Vercel URL until custom domain pinkpistachio.pk is active
+  url: 'https://pink-pistachio-website-6inh.vercel.app',
 };
 
 export const BRANCHES = [

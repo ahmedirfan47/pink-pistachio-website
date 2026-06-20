@@ -7,12 +7,14 @@ import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
 
-// Next.js 15/16: searchParams is a Promise — must be typed and awaited
+// Next.js 15/16 REQUIRES searchParams to be typed as a Promise and awaited
 interface MenuPageProps {
   searchParams: Promise<{ category?: string; q?: string }>;
 }
 
-export async function generateMetadata({ searchParams }: MenuPageProps): Promise<Metadata> {
+export async function generateMetadata({
+  searchParams,
+}: MenuPageProps): Promise<Metadata> {
   const { category } = await searchParams;
 
   if (!category) {
@@ -23,10 +25,12 @@ export async function generateMetadata({ searchParams }: MenuPageProps): Promise
     };
   }
 
-  const cat = await db.category.findUnique({
-    where: { slug: category },
-    select: { name: true, description: true },
-  });
+  const cat = await db.category
+    .findUnique({
+      where: { slug: category },
+      select: { name: true, description: true },
+    })
+    .catch(() => null);
 
   return {
     title: cat?.name ?? 'Menu',
@@ -37,7 +41,7 @@ export async function generateMetadata({ searchParams }: MenuPageProps): Promise
 }
 
 export default async function MenuPage({ searchParams }: MenuPageProps) {
-  // Await searchParams — required in Next.js 15/16
+  // CRITICAL: await searchParams before destructuring
   const { category, q } = await searchParams;
 
   const [categories, products] = await Promise.all([
@@ -47,9 +51,7 @@ export default async function MenuPage({ searchParams }: MenuPageProps) {
     }),
     db.product.findMany({
       where: {
-        // Only filter by category if one is provided
         ...(category ? { category: { slug: category } } : {}),
-        // Only filter by search if a query is provided
         ...(q
           ? {
               OR: [
@@ -80,9 +82,11 @@ export default async function MenuPage({ searchParams }: MenuPageProps) {
         </p>
       </div>
 
-      {/* Search form */}
+      {/* Search */}
       <form action="/menu" method="GET" className="mx-auto mb-8 max-w-md">
-        {category && <input type="hidden" name="category" value={category} />}
+        {category && (
+          <input type="hidden" name="category" value={category} />
+        )}
         <div className="relative">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-charcoal-600/50" />
           <input
@@ -124,36 +128,42 @@ export default async function MenuPage({ searchParams }: MenuPageProps) {
         ))}
       </div>
 
+      {/* Results count when filtering */}
+      {(category || q) && (
+        <p className="mb-6 text-sm text-charcoal-600">
+          Showing{' '}
+          <span className="font-semibold text-charcoal">{products.length}</span>{' '}
+          {products.length === 1 ? 'item' : 'items'}
+          {activeCategory && ` in ${activeCategory.name}`}
+          {q && ` matching "${q}"`}
+          {products.length > 0 && (
+            <>
+              {' — '}
+              <Link href="/menu" className="text-pink-600 hover:underline">
+                Clear filters
+              </Link>
+            </>
+          )}
+        </p>
+      )}
+
       {/* Product grid */}
       {products.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-pink-200 py-16 text-center">
-          <p className="text-charcoal-600">
-            No items found.{' '}
-            <Link href="/menu" className="font-semibold text-pink-600 hover:underline">
-              Clear filters
-            </Link>
-          </p>
+        <div className="rounded-2xl border border-dashed border-pink-200 py-16 text-center text-charcoal-600">
+          No items found.{' '}
+          <Link href="/menu" className="font-semibold text-pink-600 hover:underline">
+            Clear filters
+          </Link>
         </div>
       ) : (
-        <>
-          {q || category ? (
-            <p className="mb-6 text-sm text-charcoal-600">
-              Showing{' '}
-              <span className="font-semibold text-charcoal">{products.length}</span>{' '}
-              {products.length === 1 ? 'item' : 'items'}
-              {category && ` in ${activeCategory?.name ?? category}`}
-              {q && ` matching "${q}"`}
-            </p>
-          ) : null}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {products.map((p) => (
-              <ProductCard
-                key={p.id}
-                product={{ ...p, compareAtPrice: p.compareAtPrice ?? null }}
-              />
-            ))}
-          </div>
-        </>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {products.map((p) => (
+            <ProductCard
+              key={p.id}
+              product={{ ...p, compareAtPrice: p.compareAtPrice ?? null }}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
