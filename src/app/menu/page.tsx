@@ -1,4 +1,3 @@
-import { unstable_noStore as noStore } from 'next/cache';
 import { db } from '@/lib/db';
 import ProductCard from '@/components/storefront/ProductCard';
 import Link from 'next/link';
@@ -8,7 +7,6 @@ import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
 
-// Static metadata — avoids any build-time searchParams conflict
 export const metadata: Metadata = {
   title: 'Menu',
   description:
@@ -20,36 +18,26 @@ interface MenuPageProps {
 }
 
 export default async function MenuPage({ searchParams }: MenuPageProps) {
-  // Hard opt-out of ALL caching — overrides Turbopack static analysis
-  noStore();
-
-  // Await searchParams — required in Next.js 15/16
   const { category, q } = await searchParams;
 
-  // Step 1: Always fetch all categories first (no searchParams dependency)
   const categories = await db.category.findMany({
-    where: { isActive: true },
+    where:   { isActive: true },
     orderBy: { position: 'asc' },
   });
 
-  // Step 2: Resolve the active category object from the slug
-  // Then filter by categoryId directly — avoids relational slug filter bug
   const activeCategory = category
-    ? categories.find((c) => c.slug === category) ?? null
+    ? (categories.find((c) => c.slug === category) ?? null)
     : null;
 
-  // Step 3: Query products using direct categoryId (not relational slug)
   const products = await db.product.findMany({
     where: {
-      // Direct ID match — simpler, faster, and more reliable than relation filter
       ...(activeCategory ? { categoryId: activeCategory.id } : {}),
-      // Search filter
       ...(q
         ? {
             OR: [
-              { name: { contains: q, mode: 'insensitive' } },
+              { name:        { contains: q, mode: 'insensitive' } },
               { description: { contains: q, mode: 'insensitive' } },
-              { tags: { hasSome: [q.toLowerCase()] } },
+              { tags:        { hasSome:  [q.toLowerCase()]       } },
             ],
           }
         : {}),
@@ -117,7 +105,7 @@ export default async function MenuPage({ searchParams }: MenuPageProps) {
         ))}
       </div>
 
-      {/* Results info */}
+      {/* Results count */}
       {(activeCategory || q) && products.length > 0 && (
         <p className="mb-6 text-sm text-charcoal-600">
           Showing{' '}
@@ -132,7 +120,7 @@ export default async function MenuPage({ searchParams }: MenuPageProps) {
         </p>
       )}
 
-      {/* Product grid */}
+      {/* Grid */}
       {products.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-pink-200 py-16 text-center text-charcoal-600">
           No items found.{' '}
