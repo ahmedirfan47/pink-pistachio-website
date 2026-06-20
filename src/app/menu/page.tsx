@@ -7,7 +7,6 @@ import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
 
-// Next.js 15/16 REQUIRES searchParams to be typed as a Promise and awaited
 interface MenuPageProps {
   searchParams: Promise<{ category?: string; q?: string }>;
 }
@@ -41,7 +40,6 @@ export async function generateMetadata({
 }
 
 export default async function MenuPage({ searchParams }: MenuPageProps) {
-  // CRITICAL: await searchParams before destructuring
   const { category, q } = await searchParams;
 
   const [categories, products] = await Promise.all([
@@ -99,7 +97,7 @@ export default async function MenuPage({ searchParams }: MenuPageProps) {
         </div>
       </form>
 
-      {/* Category filter chips */}
+      {/* Category chips */}
       <div className="mb-10 flex flex-wrap justify-center gap-2">
         <Link
           href="/menu"
@@ -128,22 +126,18 @@ export default async function MenuPage({ searchParams }: MenuPageProps) {
         ))}
       </div>
 
-      {/* Results count when filtering */}
-      {(category || q) && (
+      {/* Results info when filtering */}
+      {(category || q) && products.length > 0 && (
         <p className="mb-6 text-sm text-charcoal-600">
           Showing{' '}
           <span className="font-semibold text-charcoal">{products.length}</span>{' '}
           {products.length === 1 ? 'item' : 'items'}
           {activeCategory && ` in ${activeCategory.name}`}
           {q && ` matching "${q}"`}
-          {products.length > 0 && (
-            <>
-              {' — '}
-              <Link href="/menu" className="text-pink-600 hover:underline">
-                Clear filters
-              </Link>
-            </>
-          )}
+          {' — '}
+          <Link href="/menu" className="text-pink-600 hover:underline">
+            Clear
+          </Link>
         </p>
       )}
 
@@ -151,7 +145,10 @@ export default async function MenuPage({ searchParams }: MenuPageProps) {
       {products.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-pink-200 py-16 text-center text-charcoal-600">
           No items found.{' '}
-          <Link href="/menu" className="font-semibold text-pink-600 hover:underline">
+          <Link
+            href="/menu"
+            className="font-semibold text-pink-600 hover:underline"
+          >
             Clear filters
           </Link>
         </div>
